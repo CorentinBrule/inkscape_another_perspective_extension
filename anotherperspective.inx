@@ -4,6 +4,9 @@
     <id>macrico.anotherperspective</id>
 	<dependency type="executable" location="extensions">anotherperspective.py</dependency>
 	<dependency type="executable" location="extensions">inkex.py</dependency>
+  <dependency type="executable" location="extensions">simpletransform.py</dependency>
+  <dependency type="executable" location="extensions">simplepath.py</dependency>
+  <dependency type="executable" location="extensions">cubicsuperpath.py</dependency>
     <effect>
 	<object-type>path</object-type>
         <effects-menu>

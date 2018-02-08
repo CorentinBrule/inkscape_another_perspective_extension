@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load tag_audio %}
+{% load static %}
+{% block css_section %}{% static "css/partenaires_et_donateurs.css" %}{% endblock %}
+{% block css_section_mobile %}{% static "css/visionneuse-mobile.css" %}{% endblock %}
+
+
+{% block title %}Partenaires et donateurs{% endblock %}
+{% block chapo %}Petite Phrase / Genèse{% endblock %}
+
+{% block main %}
+<div class="banniere">
+  <img src="{{equipe.image.url}}" alt="">
+</div>
+<div class="content">
+  <section id="equipe">
+    <h2 class="first-title">{{equipe.titre}}</h2>
+    <p>{{equipe.texte}}</p>
+  </section>
+  <section id="partenaires">
+    <h2>Les partenaires</h2>
+    {% for partenaire in partenaires %}
+      <section>
+        <h3>{{partenaire.nom}}</h3>
+        <p>{{partenaire.texte}}</p>
+        {% if partenaire.lien %}
+          <a href="{{partenaire.lien}}">Lien vers le site de {{atelier.nom}}</a>
+        {% endif %}
+        <img src="{{partenaire.logo.url}}"></img>
+      </section>
+    {% endfor %}
+  </section>
+  <section id="donateurs">
+  <h2>Les donateurs</h2>
+  {% for donateur in donateurs %}
+      <p>{{donateur.prenom}} {{donateur.nom}}</p>
+  {% endfor %}
+  </section>
+</div>
+{% endblock %}

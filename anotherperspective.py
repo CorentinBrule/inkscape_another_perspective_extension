@@ -21,7 +21,9 @@ Special thanks and orignal copyrigths : Aaron Spike (2005) and Timo Kähkönen (
 
 import inkex
 import re
-import svgpathtools
+import simpletransform
+import cubicsuperpath
+import simplepath
 
 __version__ = '0.1'
 
@@ -213,9 +215,9 @@ def transferPoint (xI, yI, source, destination):
 
 def projection(path_object,coords):
 
-    pp_object = svgpathtools.parse_path(path_object)
+    pp_object = cubicsuperpath.parsePath(path_object)
 
-    bounds = pp_object.bbox()
+    bounds = simpletransform.roughBBox(pp_object)
 
     # Make array of coordinates, every array member represent corner of text path
     source = [
@@ -235,25 +237,25 @@ def projection(path_object,coords):
     path_destination = distort_path(path_object,source,destination)
 
     return path_destination
-
+'''
 def complex2tulpe(complexNb):
     return (complexNb.real,complexNb.imag)
-
+'''
 class AnotherPerspective(inkex.Effect):
 
     def __init__(self):
         inkex.Effect.__init__(self)
 
     def envelope2coords(self,path_envelope):
-        pp_envelope = svgpathtools.parse_path(path_envelope)
+        pp_envelope = cubicsuperpath.parsePath(path_envelope)
+        # inkex.debug(pp_envelope)
 
-        c0=complex2tulpe(pp_envelope[0].start)
-        c1=complex2tulpe(pp_envelope[1].start)
-        c2=complex2tulpe(pp_envelope[2].start)
-        c3=complex2tulpe(pp_envelope[3].start)
-
+        c0 = pp_envelope[0][0][0]
+        c1 = pp_envelope[0][1][0]
+        c2 = pp_envelope[0][2][0]
+        c3 = pp_envelope[0][3][0]
+        # inkex.debug(str(c0)+" "+str(c1)+" "+str(c2)+" "+str(c3))
         return [c0,c1,c2,c3]
-
 
     def effect(self):
         if len(self.options.ids) < 2:
@@ -269,17 +271,32 @@ class AnotherPerspective(inkex.Effect):
 
         if obj.tag == inkex.addNS('path','svg') or obj.tag == inkex.addNS('g','svg'):
             if envelope.tag == inkex.addNS('path','svg'):
-                absolute_envelope_path = svgpathtools.parse_path(envelope.get("d")).d()
+                mat = simpletransform.composeParents(envelope, [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+                path = cubicsuperpath.parsePath(envelope.get('d'))
+                simpletransform.applyTransformToPath(mat, path)
+                absolute_envelope_path = envelope.get('d')
+                # inkex.debug(absolute_envelope_path)
                 coords_to_project = self.envelope2coords(absolute_envelope_path)
 
                 if obj.tag == inkex.addNS('path','svg'):
-                    absolute_object_path = svgpathtools.parse_path(obj.get("d")).d()
-                if obj.tag == inkex.addNS('g','svg'):
+                    mat = simpletransform.composeParents(obj, [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+                    absolute_d = simplepath.formatPath(simplepath.parsePath(obj.get('d')))
+                    path = cubicsuperpath.parsePath(absolute_d)
+                    simpletransform.applyTransformToPath(mat, path)
+                    absolute_object_path = cubicsuperpath.formatPath(path)
+                    # inkex.debug(absolute_object_path)
+
+                elif obj.tag == inkex.addNS('g','svg'):
                     absolute_object_path=""
                     for p in obj.iterfind(".//{http://www.w3.org/2000/svg}path"):
-                        absolute_object_path += svgpathtools.parse_path(p.get("d")).d()
 
-                #inkex.debug(absolute_object_path)
+                        absolute_d = simplepath.formatPath(simplepath.parsePath(p.get('d')))
+                        mat = simpletransform.composeParents(p, [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+                        path = cubicsuperpath.parsePath(absolute_d)
+                        simpletransform.applyTransformToPath(mat, path)
+                        absolute_object_path += cubicsuperpath.formatPath(path)
+                        # inkex.debug(absolute_object_path)
+
                 new_path = projection(absolute_object_path,coords_to_project)
                 attributes = {'d':new_path}
                 new_element = inkex.etree.SubElement(self.current_layer,inkex.addNS('path','svg'),attributes)
