@@ -301,12 +301,12 @@ class AnotherPerspective(inkex.Effect):
 
             else:
                 if envelope.tag == inkex.addNS('g','svg'):
-                    inkex.errormsg(_("The second selected object is a group, not a path.\nTry using the procedure Object->Ungroup."))
+                    inkex.errormsg("The second selected object is a group, not a path.\nTry using the procedure Object->Ungroup.")
                 else:
-                    inkex.errormsg(_("The second selected object is not a path.\nTry using the procedure Path->Object to Path."))
+                    inkex.errormsg("The second selected object is not a path.\nTry using the procedure Path->Object to Path.")
                 exit()
         else:
-            inkex.errormsg(_("The first selected object is not a path.\nTry using the procedure Path->Object to Path."))
+            inkex.errormsg("The first selected object is not a path.\nTry using the procedure Path->Object to Path.")
             exit()
 
 AnotherPerspective().run()
