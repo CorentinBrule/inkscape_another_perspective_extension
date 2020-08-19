@@ -1,5 +1,5 @@
-#!/usr/bin/env python
-# coding=utf-8
+#!/usr/bin/env python3
+
 """
 Copyright (C) 2017 Corentin Brulé
 
@@ -21,13 +21,11 @@ Special thanks and orignal copyrigths : Aaron Spike (2005) and Timo Kähkönen (
 
 import inkex
 import re
-import simpletransform
-import cubicsuperpath
-import simplepath
+from lxml import etree
+from inkex.transforms import Transform
+from inkex.paths import Path, CubicSuperPath
 
 __version__ = '0.1'
-
-inkex.localize()
 
 debug=False
 
@@ -215,16 +213,16 @@ def transferPoint (xI, yI, source, destination):
 
 def projection(path_object,coords):
 
-    pp_object = cubicsuperpath.parsePath(path_object)
+    pp_object = Path(path_object).to_arrays()
 
-    bounds = simpletransform.roughBBox(pp_object)
+    bounds = Path(path_object).bounding_box()
 
     # Make array of coordinates, every array member represent corner of text path
     source = [
-    {"x":bounds[0],"y":bounds[2]},
-    {"x":bounds[1],"y":bounds[2]},
-    {"x":bounds[1],"y":bounds[3]},
-    {"x":bounds[0],"y":bounds[3]}
+    {"x":bounds.left,"y":bounds.top},
+    {"x":bounds.right,"y":bounds.top},
+    {"x":bounds.right,"y":bounds.bottom},
+    {"x":bounds.left,"y":bounds.bottom}
     ]
 
     destination=[
@@ -247,7 +245,7 @@ class AnotherPerspective(inkex.Effect):
         inkex.Effect.__init__(self)
 
     def envelope2coords(self,path_envelope):
-        pp_envelope = cubicsuperpath.parsePath(path_envelope)
+        pp_envelope = CubicSuperPath(path_envelope)
         # inkex.debug(pp_envelope)
 
         c0 = pp_envelope[0][0][0]
@@ -262,8 +260,8 @@ class AnotherPerspective(inkex.Effect):
             inkex.errormsg(_("This extension requires two selected paths."))
             exit()
 
-        obj = self.selected[self.options.ids[0]]
-        envelope = self.selected[self.options.ids[1]]
+        obj = self.svg.selected[self.options.ids[0]]
+        envelope = self.svg.selected[self.options.ids[1]]
 
         if obj.get(inkex.addNS('type','sodipodi')):
             inkex.errormsg(_("The first selected object is of type '%s'.\nTry using the procedure Path->Object to Path." % obj.get(inkex.addNS('type','sodipodi'))))
@@ -271,46 +269,44 @@ class AnotherPerspective(inkex.Effect):
 
         if obj.tag == inkex.addNS('path','svg') or obj.tag == inkex.addNS('g','svg'):
             if envelope.tag == inkex.addNS('path','svg'):
-                mat = simpletransform.composeParents(envelope, [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
-                path = cubicsuperpath.parsePath(envelope.get('d'))
-                simpletransform.applyTransformToPath(mat, path)
+                mat = envelope.transform * Transform([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+                path = CubicSuperPath(envelope.get('d'))
+                Path(path).transform(mat)
                 absolute_envelope_path = envelope.get('d')
                 # inkex.debug(absolute_envelope_path)
                 coords_to_project = self.envelope2coords(absolute_envelope_path)
 
                 if obj.tag == inkex.addNS('path','svg'):
-                    mat = simpletransform.composeParents(obj, [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
-                    absolute_d = simplepath.formatPath(simplepath.parsePath(obj.get('d')))
-                    path = cubicsuperpath.parsePath(absolute_d)
-                    simpletransform.applyTransformToPath(mat, path)
-                    absolute_object_path = cubicsuperpath.formatPath(path)
+                    mat = obj.transform * Transform([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+                    absolute_d = str(Path(obj.get('d')))
+                    path = CubicSuperPath(absolute_d)
+                    Path(path).transform(mat)
+                    absolute_object_path = str(path)
                     # inkex.debug(absolute_object_path)
 
                 elif obj.tag == inkex.addNS('g','svg'):
                     absolute_object_path=""
                     for p in obj.iterfind(".//{http://www.w3.org/2000/svg}path"):
 
-                        absolute_d = simplepath.formatPath(simplepath.parsePath(p.get('d')))
-                        mat = simpletransform.composeParents(p, [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
-                        path = cubicsuperpath.parsePath(absolute_d)
-                        simpletransform.applyTransformToPath(mat, path)
-                        absolute_object_path += cubicsuperpath.formatPath(path)
+                        absolute_d = str(sPath(p.get('d')))
+                        mat = p.transform * Transform([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+                        path = CubicSuperPath(absolute_d)
+                        Path(path).transform(mat)
+                        absolute_object_path += Path(path)
                         # inkex.debug(absolute_object_path)
 
                 new_path = projection(absolute_object_path,coords_to_project)
                 attributes = {'d':new_path}
-                new_element = inkex.etree.SubElement(self.current_layer,inkex.addNS('path','svg'),attributes)
+                new_element = etree.SubElement(self.svg.get_current_layer(),inkex.addNS('path','svg'),attributes)
 
             else:
                 if envelope.tag == inkex.addNS('g','svg'):
-                    inkex.errormsg(_("The second selected object is a group, not a path.\nTry using the procedure Object->Ungroup."))
+                    inkex.errormsg("The second selected object is a group, not a path.\nTry using the procedure Object->Ungroup.")
                 else:
-                    inkex.errormsg(_("The second selected object is not a path.\nTry using the procedure Path->Object to Path."))
+                    inkex.errormsg("The second selected object is not a path.\nTry using the procedure Path->Object to Path.")
                 exit()
         else:
-            inkex.errormsg(_("The first selected object is not a path.\nTry using the procedure Path->Object to Path."))
+            inkex.errormsg("The first selected object is not a path.\nTry using the procedure Path->Object to Path.")
             exit()
 
-if __name__ == '__main__':
-    e = AnotherPerspective()
-    e.affect()
+AnotherPerspective().run()
